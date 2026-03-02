@@ -17048,7 +17048,7 @@ export default function CrosslistComposer() {
                     variant="outline" 
                     size="sm" 
                     className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
-                    onClick={() => navigate(createPageUrl("Import") + "?source=ebay")}
+                    onClick={() => navigate(createPageUrl("Sales") + "?import=open&source=ebay")}
                   >
                     eBay
                   </Button>
@@ -17056,7 +17056,7 @@ export default function CrosslistComposer() {
                     variant="outline" 
                     size="sm" 
                     className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
-                    onClick={() => navigate(createPageUrl("Import") + "?source=mercari")}
+                    onClick={() => navigate(createPageUrl("Sales") + "?import=open&source=mercari")}
                   >
                     Mercari
                   </Button>
@@ -17064,7 +17064,7 @@ export default function CrosslistComposer() {
                     variant="outline" 
                     size="sm" 
                     className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
-                    onClick={() => navigate(createPageUrl("Import") + "?source=facebook")}
+                    onClick={() => navigate(createPageUrl("Sales") + "?import=open&source=facebook")}
                   >
                     Facebook
                   </Button>
@@ -17072,7 +17072,7 @@ export default function CrosslistComposer() {
                     variant="outline" 
                     size="sm" 
                     className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
-                    onClick={() => navigate(createPageUrl("Import") + "?source=etsy")}
+                    onClick={() => navigate(createPageUrl("Sales") + "?import=open&source=etsy")}
                   >
                     Etsy
                   </Button>
@@ -17080,7 +17080,7 @@ export default function CrosslistComposer() {
                     variant="outline" 
                     size="sm" 
                     className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
-                    onClick={() => navigate(createPageUrl("Import") + "?source=poshmark")}
+                    onClick={() => navigate(createPageUrl("Sales") + "?import=open&source=poshmark")}
                   >
                     Poshmark
                   </Button>
@@ -17088,7 +17088,7 @@ export default function CrosslistComposer() {
                     variant="outline" 
                     size="sm" 
                     className="h-8 text-xs rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
-                    onClick={() => navigate(createPageUrl("Import") + "?source=depop")}
+                    onClick={() => navigate(createPageUrl("Sales") + "?import=open&source=depop")}
                   >
                     Depop
                   </Button>

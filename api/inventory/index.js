@@ -286,6 +286,7 @@ async function handleGet(req, res, userId) {
     const search = queryParams.search ? String(queryParams.search).trim() : '';
     const status = queryParams.status ? String(queryParams.status).trim() : '';
     const excludeStatus = queryParams.exclude_status ? String(queryParams.exclude_status).trim() : '';
+    const categoryFilter = queryParams.category ? String(queryParams.category).trim() : '';
     const idsCsv = queryParams.ids ? String(queryParams.ids) : '';
     const ids = idsCsv
       ? idsCsv.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 5000)
@@ -305,6 +306,14 @@ async function handleGet(req, res, userId) {
         // Allow searching by item name, category, or source (UI expects this).
         const q = `%${search}%`;
         query = query.or(`item_name.ilike.${q},category.ilike.${q},source.ilike.${q}`);
+      }
+
+      if (categoryFilter) {
+        if (categoryFilter === '__uncategorized__') {
+          query = query.or('category.is.null,category.eq.');
+        } else {
+          query = query.eq('category', categoryFilter);
+        }
       }
 
       if (status) {

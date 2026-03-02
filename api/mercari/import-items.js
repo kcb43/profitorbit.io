@@ -3,21 +3,17 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { getUserIdFromRequest } from '../_utils/auth.js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Helper to get user ID from request
-function getUserId(req) {
-  return req.headers['x-user-id'] || null;
-}
-
 export default async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Id');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -28,7 +24,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const userId = getUserId(req);
+    const userId = await getUserIdFromRequest(req, supabase);
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }

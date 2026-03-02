@@ -90,7 +90,51 @@ const getImageUrl = (imageUrl, source) => {
   return imageUrl;
 };
 
+function formatSyncDate(dateStr) {
+  if (!dateStr) return null;
+  try {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === today.toDateString()) return "Synced today";
+    if (date.toDateString() === yesterday.toDateString()) return "Synced yesterday";
+    return `Synced ${format(date, "MMM d")}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Safe localStorage setter — catches QuotaExceededError and prunes old imported items before retrying */
+function safeSetListings(key, listings) {
+  try {
+    localStorage.setItem(key, JSON.stringify(listings));
+  } catch (e) {
+    if (e?.name === 'QuotaExceededError' || e?.code === 22) {
+      // Prune already-imported items older than 30 days
+      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const pruned = listings.filter(item => {
+        if (!item.imported) return true;
+        const ts = item.importedAt ? new Date(item.importedAt).getTime() : 0;
+        return ts > cutoff;
+      });
+      try {
+        localStorage.setItem(key, JSON.stringify(pruned));
+        console.warn(`⚠️ localStorage quota hit for ${key} — pruned ${listings.length - pruned.length} old imported items`);
+      } catch {
+        console.error(`❌ localStorage still full after pruning ${key}`);
+      }
+    }
+  }
+}
+
 export default function Import() {
+  return (
+    <ImportContent isDialog={false} />
+  );
+}
+
+export function ImportContent({ isDialog = false, onClose }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -290,10 +334,9 @@ export default function Import() {
       } else if (selectedSource === "facebook") {
         // Check Facebook connection from localStorage
         try {
-          const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
-          const fbConnected = bridgeStatus.facebook?.loggedIn === true;
+          const fbConnected = localStorage.getItem('profit_orbit_facebook_connected') === 'true';
           const cachedListings = localStorage.getItem('profit_orbit_facebook_listings');
-          
+
           // Optimistic connection status: if we have cached items, assume connected until proven otherwise
           let hasCache = false;
           if (cachedListings) {
@@ -304,15 +347,10 @@ export default function Import() {
               // Ignore parse errors
             }
           }
-          
-          // Only log if we're seeing a definitive status (not just empty localStorage)
-          const hasStatus = Object.keys(bridgeStatus).length > 0;
-          
+
           if (fbConnected) {
             setIsConnected(true);
-            if (hasStatus) {
-              console.log('✅ Facebook connected from bridge');
-            }
+            console.log('✅ Facebook connected from localStorage flag');
           } else if (hasCache) {
             // Optimistically assume connected if we have cached items
             setIsConnected(true);
@@ -482,13 +520,20 @@ export default function Import() {
       
       setLastSync(new Date());
       
+      // Stamp items with syncedAt date for date grouping
+      const now = new Date().toISOString();
+      const stamped = (data.listings || []).map(item => ({
+        ...item,
+        syncedAt: item.syncedAt || now,
+      }));
+
       // Cache listings in localStorage so they persist across page navigation
       // Always cache as "All" since we're fetching everything together
       const cacheKey = `ebay_listings_All_${userId}`;
-      localStorage.setItem(cacheKey, JSON.stringify(data.listings || []));
-      localStorage.setItem(`${cacheKey}_timestamp`, new Date().toISOString());
-      
-      return data.listings || [];
+      localStorage.setItem(cacheKey, JSON.stringify(stamped));
+      localStorage.setItem(`${cacheKey}_timestamp`, now);
+
+      return stamped;
     },
     enabled: false, // DISABLED: Only fetch when user clicks "Get Latest Items"
     staleTime: Infinity, // Never auto-refetch - user must click button
@@ -521,14 +566,9 @@ export default function Import() {
       
       // Re-check connection status from localStorage after bridge updates it
       if (selectedSource === 'facebook') {
-        try {
-          const bridgeStatus = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
-          const fbConnected = bridgeStatus.facebook?.loggedIn === true;
-          console.log('🔵 Import: Facebook status after bridge ready:', fbConnected);
-          setIsConnected(fbConnected);
-        } catch (e) {
-          console.error('Error re-checking Facebook connection:', e);
-        }
+        const fbConnected = localStorage.getItem('profit_orbit_facebook_connected') === 'true';
+        console.log('🔵 Import: Facebook status after bridge ready:', fbConnected);
+        setIsConnected(fbConnected);
       }
     };
     
@@ -830,7 +870,7 @@ export default function Import() {
         
         // Update cache and persist to localStorage
         queryClient.setQueryData(['facebook-listings', userId], updatedListings);
-        localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+        safeSetListings('profit_orbit_facebook_listings', updatedListings);
         console.log('✅ Marked', data.importedItems?.length || 0, 'items as imported with inventory IDs');
         
         // Trigger re-render
@@ -854,7 +894,7 @@ export default function Import() {
         
         // Update cache and persist to localStorage
         queryClient.setQueryData(['mercari-listings', userId], updatedListings);
-        localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+        safeSetListings('profit_orbit_mercari_listings', updatedListings);
         console.log('✅ Marked', data.importedItems?.length || 0, 'Mercari items as imported with inventory IDs');
         
         // Trigger re-render
@@ -1016,7 +1056,7 @@ export default function Import() {
         });
         
         queryClient.setQueryData(['facebook-listings', userId], updatedListings);
-        localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(updatedListings));
+        safeSetListings('profit_orbit_facebook_listings', updatedListings);
         setFacebookListingsVersion(v => v + 1);
       } else if (selectedSource === 'mercari') {
         const mercariListings = queryClient.getQueryData(['mercari-listings', userId]) || [];
@@ -1028,7 +1068,7 @@ export default function Import() {
         });
         
         queryClient.setQueryData(['mercari-listings', userId], updatedListings);
-        localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(updatedListings));
+        safeSetListings('profit_orbit_mercari_listings', updatedListings);
         setFacebookListingsVersion(v => v + 1);
       } else if (selectedSource === 'ebay') {
         // Update eBay cache immediately for fast UI update
@@ -1083,11 +1123,13 @@ export default function Import() {
     // Filter out the cleared items
     const updatedListings = sourceListings.filter(item => !itemsToClear.includes(item.itemId));
     
-    // Update the cache
+    // Update the cache and persist to localStorage
     if (selectedSource === "facebook") {
       queryClient.setQueryData(['facebook-listings', userId], updatedListings);
+      safeSetListings('profit_orbit_facebook_listings', updatedListings);
     } else if (selectedSource === "mercari") {
       queryClient.setQueryData(['mercari-listings', userId], updatedListings);
+      safeSetListings('profit_orbit_mercari_listings', updatedListings);
     }
     
     // Clear selection
@@ -1269,13 +1311,13 @@ export default function Import() {
     
     // Handle Facebook differently - use extension scraping
     if (selectedSource === 'facebook') {
-      handleFacebookSync();
+      handleFacebookSync().catch(() => {}); // errors already handled via toast inside
       return;
     }
-    
+
     // Handle Mercari differently - use extension scraping
     if (selectedSource === 'mercari') {
-      handleMercariSync();
+      handleMercariSync().catch(() => {}); // errors already handled via toast inside
       return;
     }
     
@@ -1374,23 +1416,25 @@ export default function Import() {
         const existingItem = existingListingsMap.get(newItem.itemId);
         
         if (existingItem) {
-          // Item exists - update it but preserve the imported status
+          // Item exists - update it but preserve the imported status and syncedAt
           existingListingsMap.set(newItem.itemId, {
             ...newItem,
-            imported: existingItem.imported || false
+            imported: existingItem.imported || false,
+            syncedAt: existingItem.syncedAt || new Date().toISOString(),
           });
         } else {
-          // New item - add it to the map
+          // New item - add it to the map with syncedAt timestamp
           existingListingsMap.set(newItem.itemId, {
             ...newItem,
-            imported: false
+            imported: false,
+            syncedAt: new Date().toISOString(),
           });
         }
       });
-      
+
       // Convert map back to array
       const mergedListings = Array.from(existingListingsMap.values());
-      
+
       console.log('✅ Merged cache:', {
         totalItems: mergedListings.length,
         newItems: listings.length,
@@ -1400,10 +1444,10 @@ export default function Import() {
           return acc;
         }, {})
       });
-      
+
       // Update the query data and persist to localStorage
       queryClient.setQueryData(['facebook-listings', userId], mergedListings);
-      localStorage.setItem('profit_orbit_facebook_listings', JSON.stringify(mergedListings));
+      safeSetListings('profit_orbit_facebook_listings', mergedListings);
       console.log('✅ Updated query cache and localStorage with', mergedListings.length, 'total listings');
       
       // Force a re-render
@@ -1418,38 +1462,45 @@ export default function Import() {
       
     } catch (error) {
       console.error('❌ Facebook sync error:', error);
-      
-      // Check if this is a token expiration error
-      const isTokenError = error.message && (
-        error.message.includes('fb_dtsg') || 
-        error.message.includes('CSRF token') ||
-        error.message.includes('Empty response')
+      const msg = error.message || '';
+
+      // Broad auth/session error detection — disconnect on any auth-related failure
+      const isAuthError = (
+        msg.includes('fb_dtsg') ||
+        msg.includes('CSRF token') ||
+        msg.includes('Empty response') ||
+        msg.includes('Extension API not available') ||
+        msg.includes('Extension context invalidated') ||
+        msg.includes('not logged in') ||
+        msg.includes('authentication') ||
+        msg.includes('not connected') ||
+        msg.includes('session expired')
       );
-      
-      if (isTokenError) {
-        // Mark Facebook as disconnected - update the actual localStorage key used by Settings.jsx
+
+      if (isAuthError) {
+        // Mark Facebook as disconnected
         localStorage.setItem('profit_orbit_facebook_connected', 'false');
         localStorage.removeItem('profit_orbit_facebook_user');
-        
-        // Update React state to reflect disconnection
         setIsConnected(false);
-        
+
         toast({
           title: "Facebook Session Expired",
-          description: "Please reconnect Facebook Marketplace in Settings to continue importing.",
+          description: "Please reconnect Facebook Marketplace to continue importing.",
           variant: "destructive",
           duration: 8000,
         });
       } else {
         toast({
           title: "Sync failed",
-          description: error.message || "Failed to sync Facebook listings",
+          description: msg || "Failed to sync Facebook listings",
           variant: "destructive",
           duration: 6000,
         });
       }
+      // Re-throw so auto-sync knows it failed and can retry next visit
+      throw error;
     } finally {
-      setIsSyncingFacebook(false); // Always stop loading spinner
+      setIsSyncingFacebook(false);
     }
   };
 
@@ -1502,34 +1553,36 @@ export default function Import() {
       // MERGE: Update existing items with new data, preserve imported status, add new items
       listings.forEach(newItem => {
         const existingItem = existingListingsMap.get(newItem.itemId);
-        
+
         if (existingItem) {
-          // Item exists - update it but preserve the imported status
+          // Item exists - update it but preserve the imported status and syncedAt
           existingListingsMap.set(newItem.itemId, {
             ...newItem,
-            imported: existingItem.imported || false
+            imported: existingItem.imported || false,
+            syncedAt: existingItem.syncedAt || new Date().toISOString(),
           });
         } else {
-          // New item - add it to the map
+          // New item - add it to the map with syncedAt timestamp
           existingListingsMap.set(newItem.itemId, {
             ...newItem,
-            imported: false
+            imported: false,
+            syncedAt: new Date().toISOString(),
           });
         }
       });
-      
+
       // Convert map back to array
       const mergedListings = Array.from(existingListingsMap.values());
-      
+
       console.log('✅ Merged cache:', {
         totalItems: mergedListings.length,
         newItems: listings.length,
         existingItems: existingListingsMap.size - listings.length
       });
-      
+
       // Update the query data and persist to localStorage
       queryClient.setQueryData(['mercari-listings', userId], mergedListings);
-      localStorage.setItem('profit_orbit_mercari_listings', JSON.stringify(mergedListings));
+      safeSetListings('profit_orbit_mercari_listings', mergedListings);
       console.log('✅ Updated query cache and localStorage with', mergedListings.length, 'total listings');
       
       // Force a re-render
@@ -1544,29 +1597,69 @@ export default function Import() {
       
     } catch (error) {
       console.error('❌ Mercari sync error:', error);
-      toast({
-        title: "Sync failed",
-        description: error.message || "Failed to sync Mercari listings",
-        variant: "destructive",
-        duration: 6000,
-      });
+      const msg = error.message || '';
+
+      // Auth/session error detection — disconnect on token-related failures
+      const isAuthError = (
+        msg.includes('authentication') ||
+        msg.includes('token') ||
+        msg.includes('401') ||
+        msg.includes('403') ||
+        msg.includes('Extension API not available') ||
+        msg.includes('Extension context invalidated') ||
+        msg.includes('not logged in') ||
+        msg.includes('session expired') ||
+        msg.includes('needsRefresh')
+      );
+
+      if (isAuthError) {
+        localStorage.setItem('profit_orbit_mercari_connected', 'false');
+        localStorage.removeItem('profit_orbit_mercari_user');
+        setIsConnected(false);
+
+        toast({
+          title: "Mercari Session Expired",
+          description: "Please reconnect Mercari to continue importing.",
+          variant: "destructive",
+          duration: 8000,
+        });
+      } else {
+        toast({
+          title: "Sync failed",
+          description: msg || "Failed to sync Mercari listings",
+          variant: "destructive",
+          duration: 6000,
+        });
+      }
+      // Re-throw so auto-sync knows it failed and can retry next visit
+      throw error;
     } finally {
-      setIsSyncingMercari(false); // Always stop loading spinner
+      setIsSyncingMercari(false);
     }
   };
 
   // Auto-sync on page visit: trigger sync once per source when connected
+  // Only marks as synced after a successful sync — retries on failure next visit
   useEffect(() => {
     if (!isConnected || !userId || !canSync) return;
     if (autoSyncedRef.current.has(selectedSource)) return;
 
-    // Mark as synced immediately to prevent re-triggering
-    autoSyncedRef.current.add(selectedSource);
-
     // Small delay to let the UI settle before kicking off sync
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       console.log(`🔄 Auto-syncing ${selectedSource} on page visit`);
-      handleRefresh();
+      try {
+        if (selectedSource === 'facebook') {
+          await handleFacebookSync();
+        } else if (selectedSource === 'mercari') {
+          await handleMercariSync();
+        } else {
+          handleRefresh();
+        }
+        // Only mark as synced on success
+        autoSyncedRef.current.add(selectedSource);
+      } catch (err) {
+        console.warn(`⚠️ Auto-sync failed for ${selectedSource}, will retry next visit:`, err.message);
+      }
     }, 500);
 
     return () => clearTimeout(timer);
@@ -1652,90 +1745,116 @@ export default function Import() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Selection Banner - shows when scrolled down with items selected */}
-      <SelectionBanner
-        selectedCount={selectedItems.length}
-        onClear={() => setSelectedItems([])}
-        showAtTop={false}
-        threshold={200}
-      >
-        <Button
-          onClick={handleImport}
-          disabled={importMutation.isPending || selectedItems.length === 0}
-          size="sm"
-          className="bg-white text-emerald-600 hover:bg-white/90 h-8 gap-2"
+    <div className={isDialog ? "" : "min-h-screen bg-background"}>
+      {/* Selection Banner - shows when scrolled down with items selected (page mode only) */}
+      {!isDialog && (
+        <SelectionBanner
+          selectedCount={selectedItems.length}
+          onClear={() => setSelectedItems([])}
+          showAtTop={false}
+          threshold={200}
         >
-          <Download className="h-4 w-4" />
-          {importMutation.isPending ? 'Importing...' : 'Import'}
-        </Button>
-      </SelectionBanner>
+          <Button
+            onClick={handleImport}
+            disabled={importMutation.isPending || selectedItems.length === 0}
+            size="sm"
+            className="bg-white text-emerald-600 hover:bg-white/90 h-8 gap-2"
+          >
+            <Download className="h-4 w-4" />
+            {importMutation.isPending ? 'Importing...' : 'Import'}
+          </Button>
+        </SelectionBanner>
+      )}
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-background via-background/95 to-background border-b border-border/40 backdrop-blur-sm shadow-md sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  console.log('🔍 Import Back Button - location.state:', location.state);
-                  console.log('🔍 Import Back Button - savedLocationState:', savedLocationState);
-                  console.log('🔍 savedLocationState?.from?.pathname:', savedLocationState?.from?.pathname);
-                  
-                  // Use saved state (captured on mount) instead of location.state
-                  if (savedLocationState?.from?.pathname) {
-                    const backPath = savedLocationState.from.pathname + (savedLocationState.from.search || '');
-                    console.log('✅ Navigating back to:', backPath);
-                    // Navigate back to the page we came from with preserved state
-                    navigate(backPath, {
-                      state: savedLocationState.from
-                    });
-                  } else {
-                    console.log('⚠️ No saved location state, defaulting to Crosslist');
-                    // Default to Crosslist if no referrer
-                    navigate(createPageUrl("Crosslist"));
-                  }
-                }}
-                className="flex-shrink-0 hover:bg-primary/10 transition-all hover:scale-105"
-              >
-                <ArrowLeft className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Back</span>
-              </Button>
-              <h1 className="text-lg sm:text-2xl font-bold">Import</h1>
-            </div>
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground flex-shrink-0">
-              {lastSync && <span className="hidden md:inline">Last sync: {format(lastSync, "h:mm a")}</span>}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isLoading || isSyncingFacebook || isSyncingMercari || !canSync}
-                className="gap-1 sm:gap-2 text-xs sm:text-sm rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
-              >
-                <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${(isLoading || isSyncingFacebook || isSyncingMercari) ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">
-                  {!canSync && nextSyncTime 
-                    ? `Sync in ${Math.ceil((nextSyncTime - new Date()) / 1000 / 60)}m`
-                    : selectedSource === "facebook" 
-                      ? "Sync Facebook"
-                      : selectedSource === "mercari"
-                        ? "Sync Mercari"
-                        : selectedSource === "ebay"
-                          ? "Sync eBay"
-                          : `Sync ${selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)}`
-                  }
-                </span>
-                <span className="sm:hidden">Sync</span>
-              </Button>
+      {!isDialog ? (
+        <div className="bg-gradient-to-r from-background via-background/95 to-background border-b border-border/40 backdrop-blur-sm shadow-md sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (savedLocationState?.from?.pathname) {
+                      const backPath = savedLocationState.from.pathname + (savedLocationState.from.search || '');
+                      navigate(backPath, { state: savedLocationState.from });
+                    } else {
+                      navigate(createPageUrl("Crosslist"));
+                    }
+                  }}
+                  className="flex-shrink-0 hover:bg-primary/10 transition-all hover:scale-105"
+                >
+                  <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Back</span>
+                </Button>
+                <h1 className="text-lg sm:text-2xl font-bold">Import</h1>
+              </div>
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground flex-shrink-0">
+                {lastSync && <span className="hidden md:inline">Last sync: {format(lastSync, "h:mm a")}</span>}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={isLoading || isSyncingFacebook || isSyncingMercari || !canSync}
+                  className="gap-1 sm:gap-2 text-xs sm:text-sm rounded-full hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105 hover:shadow-md"
+                >
+                  <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${(isLoading || isSyncingFacebook || isSyncingMercari) ? "animate-spin" : ""}`} />
+                  <span className="hidden sm:inline">
+                    {!canSync && nextSyncTime
+                      ? `Sync in ${Math.ceil((nextSyncTime - new Date()) / 1000 / 60)}m`
+                      : selectedSource === "facebook"
+                        ? "Sync Facebook"
+                        : selectedSource === "mercari"
+                          ? "Sync Mercari"
+                          : selectedSource === "ebay"
+                            ? "Sync eBay"
+                            : `Sync ${selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)}`
+                    }
+                  </span>
+                  <span className="sm:hidden">Sync</span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* Dialog-mode header: compact bar with sync controls */
+        <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border/40">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {lastSync && <span>Last sync: {format(lastSync, "h:mm a")}</span>}
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedItems.length > 0 && (
+              <Button
+                onClick={handleImport}
+                disabled={importMutation.isPending}
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 gap-1.5 text-xs"
+              >
+                <Download className="h-3.5 w-3.5" />
+                {importMutation.isPending ? 'Importing...' : `Import (${selectedItems.length})`}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading || isSyncingFacebook || isSyncingMercari || !canSync}
+              className="gap-1.5 text-xs h-8"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${(isLoading || isSyncingFacebook || isSyncingMercari) ? "animate-spin" : ""}`} />
+              {!canSync && nextSyncTime
+                ? `Sync in ${Math.ceil((nextSyncTime - new Date()) / 1000 / 60)}m`
+                : "Sync"
+              }
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
+      <div className={isDialog ? "px-4 py-4 space-y-4" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4"}>
 
         {/* ── Marketplace Connection Banner ──────────────────────── */}
         <Card className="p-4">
@@ -1762,9 +1881,8 @@ export default function Import() {
                 } catch {}
               } else if (isFb) {
                 try {
-                  const bs = JSON.parse(localStorage.getItem('profit_orbit_bridge_status') || '{}');
                   const cache = localStorage.getItem('profit_orbit_facebook_listings');
-                  connected = bs.facebook?.loggedIn === true || (cache && JSON.parse(cache).length > 0);
+                  connected = localStorage.getItem('profit_orbit_facebook_connected') === 'true' || (cache && JSON.parse(cache).length > 0);
                 } catch {}
               } else if (isMerc) {
                 try {
@@ -2347,9 +2465,22 @@ export default function Import() {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                {paginatedListings.map((item) => (
-                  <Card 
-                    key={item.itemId} 
+                {paginatedListings.map((item, idx) => {
+                  // Show sync date divider when date group changes
+                  const syncLabel = formatSyncDate(item.syncedAt);
+                  const prevSyncLabel = idx > 0 ? formatSyncDate(paginatedListings[idx - 1].syncedAt) : null;
+                  const showDivider = syncLabel && syncLabel !== prevSyncLabel;
+
+                  return (
+                  <React.Fragment key={item.itemId}>
+                  {showDivider && (
+                    <div className="flex items-center gap-3 py-1">
+                      <div className="h-px flex-1 bg-border/60" />
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{syncLabel}</span>
+                      <div className="h-px flex-1 bg-border/60" />
+                    </div>
+                  )}
+                  <Card
                     className={`p-4 transition-all ${
                       selectedItems.includes(item.itemId)
                         ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950 shadow-md cursor-pointer'
@@ -2710,7 +2841,9 @@ export default function Import() {
                       </div>
                     </div>
                   </Card>
-                ))}
+                  </React.Fragment>
+                  );
+                })}
               </div>
             )}
 

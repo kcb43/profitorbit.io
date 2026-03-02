@@ -663,6 +663,22 @@ if (MARKETPLACE === 'mercari') {
     });
   });
   
+  // Listen for captured GraphQL operations (for discovering mutation hashes)
+  window.addEventListener('MERCARI_GRAPHQL_OP_CAPTURED', (event) => {
+    const { operationName, hash, variables, method } = event.detail || {};
+    if (!operationName || !hash) return;
+
+    // Store every captured operation in chrome.storage for later inspection
+    chrome.storage.local.get('mercari_captured_ops', (result) => {
+      const ops = result.mercari_captured_ops || {};
+      // Only store if we haven't seen this operation before (or hash changed)
+      if (ops[operationName]?.hash === hash) return;
+      ops[operationName] = { hash, method, capturedAt: Date.now(), sampleVariables: variables };
+      chrome.storage.local.set({ mercari_captured_ops: ops });
+      console.log(`💾 Stored Mercari GraphQL op: ${operationName} (hash: ${hash.slice(0, 12)}...)`);
+    });
+  });
+
   console.log('📡 Listening for MERCARI_AUTH_INTERCEPTED events from MAIN world');
 }
 

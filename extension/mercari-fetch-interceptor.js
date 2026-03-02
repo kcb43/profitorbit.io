@@ -7,19 +7,52 @@
   'use strict';
   
   console.log('🎯 Installing Mercari fetch/XHR interceptor in MAIN world...');
-  
+
+  // Keywords that indicate a price/offer/update mutation we want to capture
+  const INTERESTING_OPS = /update|edit|price|offer|promote|discount|negotiate|reduce|item.*mut/i;
+
+  // Dispatch captured GraphQL operation to content script for storage
+  function captureGraphQLOp(operationName, hash, variables, method) {
+    console.log(`🎯 Captured GraphQL op: ${operationName} [${method}] hash=${hash}`);
+    window.dispatchEvent(new CustomEvent('MERCARI_GRAPHQL_OP_CAPTURED', {
+      detail: { operationName, hash, variables, method, timestamp: Date.now() }
+    }));
+  }
+
+  // Extract operation info from URL query params (GET requests)
+  function checkGetUrl(url) {
+    try {
+      const u = new URL(url);
+      const opName = u.searchParams.get('operationName');
+      const extRaw = u.searchParams.get('extensions');
+      if (opName && extRaw) {
+        const ext = JSON.parse(extRaw);
+        const hash = ext?.persistedQuery?.sha256Hash;
+        if (hash) {
+          const vars = u.searchParams.get('variables');
+          captureGraphQLOp(opName, hash, vars ? JSON.parse(vars) : null, 'GET');
+        }
+      }
+    } catch {}
+  }
+
   // Store original fetch
   const originalFetch = window.fetch;
-  
+
   // Override fetch
   window.fetch = function(...args) {
     const [url, options] = args;
-    
+
     // Check if this is a Mercari API call
     if (typeof url === 'string' && url.includes('mercari.com/v1/api')) {
       console.log('🔍 Intercepted Mercari API call (fetch):', url);
-      
-      // Log the request body to see what queries are being made
+
+      // Check GET query params for operation info
+      if (!options?.method || options.method === 'GET') {
+        checkGetUrl(url);
+      }
+
+      // Log the request body to see what queries are being made (POST)
       if (options?.body) {
         try {
           const body = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
@@ -27,6 +60,7 @@
             console.log('📋 GraphQL Operation:', body.operationName);
             console.log('🔑 Persisted Query Hash:', body.extensions.persistedQuery.sha256Hash);
             console.log('📦 Variables:', body.variables);
+            captureGraphQLOp(body.operationName, body.extensions.persistedQuery.sha256Hash, body.variables, 'POST');
           }
         } catch (e) {
           // Ignore parse errors

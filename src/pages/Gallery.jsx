@@ -6,7 +6,7 @@ import { salesApi } from '@/api/salesApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ImageIcon, DollarSign, BarChart3, Clock, Award, Zap, TrendingUp, Trophy, Calendar, ChevronDown } from 'lucide-react';
+import { ImageIcon, BarChart3, Clock, Award, Trophy, Calendar, ChevronDown } from 'lucide-react';
 import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, startOfYear, subMonths, subYears } from 'date-fns';
 import ShowcaseItemModal from '../components/showcase/ShowcaseItemModal';
 import { sortSalesByRecency } from "@/utils/sales";
@@ -180,154 +180,134 @@ export default function GalleryPage() {
     </div>
   );
 
-  // Premium Layout - Gradient cards with Best Deal banner
-  const renderPremiumLayout = () => (
-    <div className="mb-6 space-y-4">
-      {/* Stats in horizontal cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        <div className="relative overflow-hidden rounded-2xl p-4 md:p-6 bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl">
-          <div className="absolute top-0 right-0 w-24 h-24 md:w-32 md:h-32 bg-white/10 rounded-full blur-2xl" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-              <BarChart3 className="h-6 w-6 md:h-8 md:w-8" />
-              <Badge className="bg-white/20 text-white border-white/30 text-xs">
-                {dateRangeBounds.label}
-              </Badge>
-            </div>
-            <p className="text-3xl md:text-4xl font-bold mb-1">{stats.salesCount}</p>
-            <p className="text-xs md:text-sm opacity-90">Total Sales</p>
-          </div>
-        </div>
+  // ─── Shared Best Deal helpers ───────────────────────────────────────────
+  const bestDeal = stats.topFlips.highestProfit;
 
-        <div className="relative overflow-hidden rounded-2xl p-4 md:p-6 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl">
-          <div className="absolute top-0 right-0 w-24 h-24 md:w-32 md:h-32 bg-white/10 rounded-full blur-2xl" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-              <DollarSign className="h-6 w-6 md:h-8 md:w-8" />
-              <TrendingUp className="h-5 w-5 md:h-6 md:w-6 opacity-50" />
+  const BestDealMobile = ({ className = '' }) => {
+    if (!bestDeal) return null;
+    return (
+      <div className={className}>
+        <button
+          className="md:hidden w-full p-4 flex items-center justify-between text-left"
+          onClick={() => setBestDealExpanded(!bestDealExpanded)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full p-2">
+              <Trophy className="h-5 w-5 text-white" />
             </div>
-            <p className="text-3xl md:text-4xl font-bold mb-1">${stats.totalProfit.toFixed(0)}</p>
-            <p className="text-xs md:text-sm opacity-90">Total Profit</p>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden rounded-2xl p-4 md:p-6 bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-xl">
-          <div className="absolute top-0 right-0 w-24 h-24 md:w-32 md:h-32 bg-white/10 rounded-full blur-2xl" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-              <Clock className="h-6 w-6 md:h-8 md:w-8" />
-              <Zap className="h-5 w-5 md:h-6 md:w-6 opacity-50" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Best Deal</p>
+              <p className="text-xs text-muted-foreground">{dateRangeBounds.label}</p>
             </div>
-            <p className="text-3xl md:text-4xl font-bold mb-1">{stats.avgSellTime.toFixed(0)}</p>
-            <p className="text-xs md:text-sm opacity-90">Days to Sell</p>
           </div>
-        </div>
-      </div>
-
-      {/* Best Deal Banner - Collapsible on Mobile */}
-      {stats.topFlips.highestProfit && (
-        <Card className="border-0 shadow-lg overflow-hidden bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 dark:from-amber-950/30 dark:via-yellow-950/30 dark:to-amber-950/30">
-          {/* Mobile: Collapsible Header */}
-          <button 
-            className="md:hidden w-full p-4 flex items-center justify-between text-left"
-            onClick={() => setBestDealExpanded(!bestDealExpanded)}
-          >
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full p-2">
-                <Trophy className="h-5 w-5 text-white" />
+          <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${bestDealExpanded ? 'rotate-180' : ''}`} />
+        </button>
+        {bestDealExpanded && (
+          <div className="md:hidden p-4 pt-0">
+            <div className="space-y-4">
+              <div className="w-full aspect-square rounded-2xl overflow-hidden ring-4 ring-amber-200 dark:ring-amber-800">
+                <OptimizedImage src={bestDeal.image_url || DEFAULT_IMAGE_URL} alt={bestDeal.item_name} fallback={DEFAULT_IMAGE_URL} className="w-full h-full object-cover" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-foreground">Best Deal</p>
-                <p className="text-xs text-muted-foreground">{dateRangeBounds.label}</p>
+                <h3 className="text-lg font-bold text-foreground mb-3">{bestDeal.item_name}</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-white/60 dark:bg-background/60 rounded-xl">
+                    <p className="text-xl font-bold text-emerald-600">${bestDeal.profit.toFixed(0)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Profit</p>
+                  </div>
+                  <div className="text-center p-3 bg-white/60 dark:bg-background/60 rounded-xl">
+                    <p className="text-xl font-bold text-foreground">{bestDeal.roi === Infinity ? '∞' : `${bestDeal.roi.toFixed(0)}%`}</p>
+                    <p className="text-xs text-muted-foreground mt-1">ROI</p>
+                  </div>
+                  <div className="text-center p-3 bg-white/60 dark:bg-background/60 rounded-xl">
+                    <p className="text-xl font-bold text-foreground">{bestDeal.saleSpeed}d</p>
+                    <p className="text-xs text-muted-foreground mt-1">Speed</p>
+                  </div>
+                </div>
               </div>
             </div>
-            <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${bestDealExpanded ? 'rotate-180' : ''}`} />
-          </button>
-          
-          {/* Mobile: Expandable Content */}
-          {bestDealExpanded && (
-            <CardContent className="md:hidden p-4 pt-0">
-              <div className="space-y-4">
-                <div className="relative flex-shrink-0">
-                  <div className="w-full aspect-square rounded-2xl overflow-hidden ring-4 ring-amber-200 dark:ring-amber-800">
-                    <OptimizedImage
-                      src={stats.topFlips.highestProfit.image_url || DEFAULT_IMAGE_URL}
-                      alt={stats.topFlips.highestProfit.item_name}
-                      fallback={DEFAULT_IMAGE_URL}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-foreground mb-3">{stats.topFlips.highestProfit.item_name}</h3>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="text-center p-3 bg-white/60 dark:bg-background/60 rounded-xl">
-                      <p className="text-xl font-bold text-emerald-600">${stats.topFlips.highestProfit.profit.toFixed(0)}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Profit</p>
-                    </div>
-                    <div className="text-center p-3 bg-white/60 dark:bg-background/60 rounded-xl">
-                      <p className="text-xl font-bold text-foreground">
-                        {stats.topFlips.highestProfit.roi === Infinity ? '∞' : `${stats.topFlips.highestProfit.roi.toFixed(0)}%`}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">ROI</p>
-                    </div>
-                    <div className="text-center p-3 bg-white/60 dark:bg-background/60 rounded-xl">
-                      <p className="text-xl font-bold text-foreground">{stats.topFlips.highestProfit.saleSpeed}d</p>
-                      <p className="text-xs text-muted-foreground mt-1">Speed</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          )}
-          
-          {/* Desktop: Always Visible */}
-          <CardContent className="hidden md:block p-6">
-            <div className="flex items-center gap-6">
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VARIANT 1 — "Command Center" (matches DashboardV3 style)
+  // Tight, data-dense, border-top accent lines, muted bg, small text
+  // ═══════════════════════════════════════════════════════════════════════════
+  const renderVariant1 = () => (
+    <div className="mb-6 space-y-3">
+      {/* Date range indicator */}
+      <div className="flex items-center gap-2">
+        <Badge variant="outline" className="text-[10px] font-medium text-muted-foreground border-border/60 px-2 py-0.5">
+          <Calendar className="h-3 w-3 mr-1" />
+          {dateRangeBounds.label}
+        </Badge>
+      </div>
+      <div className="grid grid-cols-12 gap-2">
+        {/* Best Deal — hero left */}
+        {bestDeal && (
+          <div className="col-span-12 md:col-span-5 rounded-lg border border-border bg-card overflow-hidden">
+            {/* Desktop */}
+            <div className="hidden md:flex items-center gap-4 p-4">
               <div className="relative flex-shrink-0">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden ring-4 ring-amber-200 dark:ring-amber-800">
-                  <OptimizedImage
-                    src={stats.topFlips.highestProfit.image_url || DEFAULT_IMAGE_URL}
-                    alt={stats.topFlips.highestProfit.item_name}
-                    fallback={DEFAULT_IMAGE_URL}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-20 h-20 rounded-xl overflow-hidden ring-2 ring-amber-400/40">
+                  <OptimizedImage src={bestDeal.image_url || DEFAULT_IMAGE_URL} alt={bestDeal.item_name} fallback={DEFAULT_IMAGE_URL} className="w-full h-full object-cover" />
                 </div>
-                <div className="absolute -top-2 -right-2 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full p-2 shadow-lg">
-                  <Trophy className="h-5 w-5 text-white" />
+                <div className="absolute -top-1.5 -right-1.5 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full p-1 shadow">
+                  <Trophy className="h-3 w-3 text-white" />
                 </div>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-amber-600 text-white">Best Deal</Badge>
-                  <span className="text-xs text-muted-foreground">{dateRangeBounds.label}</span>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">Best Deal</span>
+                  <span className="text-[10px] text-muted-foreground">· {dateRangeBounds.label}</span>
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-1 truncate">{stats.topFlips.highestProfit.item_name}</h3>
-                <div className="flex items-center gap-4 flex-wrap">
+                <p className="text-sm font-bold text-foreground truncate mb-2">{bestDeal.item_name}</p>
+                <div className="flex items-center gap-3">
                   <div>
-                    <p className="text-2xl font-bold text-emerald-600">${stats.topFlips.highestProfit.profit.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">Profit</p>
+                    <p className="text-lg font-bold text-emerald-500 tabular-nums">${bestDeal.profit.toFixed(2)}</p>
+                    <p className="text-[10px] text-muted-foreground">Profit</p>
                   </div>
-                  <div className="h-8 w-px bg-border" />
+                  <div className="h-6 w-px bg-border" />
                   <div>
-                    <p className="text-lg font-semibold text-foreground">
-                      {stats.topFlips.highestProfit.roi === Infinity ? '∞' : `${stats.topFlips.highestProfit.roi.toFixed(0)}%`}
-                    </p>
-                    <p className="text-xs text-muted-foreground">ROI</p>
+                    <p className="text-sm font-semibold text-foreground tabular-nums">{bestDeal.roi === Infinity ? '∞' : `${bestDeal.roi.toFixed(0)}%`}</p>
+                    <p className="text-[10px] text-muted-foreground">ROI</p>
                   </div>
-                  <div className="h-8 w-px bg-border" />
+                  <div className="h-6 w-px bg-border" />
                   <div>
-                    <p className="text-lg font-semibold text-foreground">{stats.topFlips.highestProfit.saleSpeed}d</p>
-                    <p className="text-xs text-muted-foreground">Sale Speed</p>
+                    <p className="text-sm font-semibold text-foreground tabular-nums">{bestDeal.saleSpeed}d</p>
+                    <p className="text-[10px] text-muted-foreground">Speed</p>
                   </div>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <BestDealMobile />
+          </div>
+        )}
+        {/* 3 KPI cells — right */}
+        <div className={`col-span-12 ${bestDeal ? 'md:col-span-7' : 'md:col-span-12'} grid grid-cols-3 gap-2`}>
+          <div className="rounded-lg border border-border bg-card p-3 border-t-2 border-t-blue-500">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total Sales</p>
+            <p className="text-2xl font-bold text-foreground tabular-nums">{stats.salesCount}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{dateRangeBounds.label}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-3 border-t-2 border-t-emerald-500">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total Profit</p>
+            <p className="text-2xl font-bold text-emerald-500 tabular-nums">${stats.totalProfit.toFixed(0)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">${stats.salesCount > 0 ? (stats.totalProfit / stats.salesCount).toFixed(0) : '0'} avg</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-3 border-t-2 border-t-purple-500">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Days to Sell</p>
+            <p className="text-2xl font-bold text-foreground tabular-nums">{stats.avgSellTime.toFixed(0)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">avg speed</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-background overflow-x-hidden w-full" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
@@ -337,8 +317,8 @@ export default function GalleryPage() {
           {/* Header with Controls */}
           {renderHeaderControls()}
           
-          {/* Premium Layout */}
-          {renderPremiumLayout()}
+          {/* Stats + Best Deal */}
+          {renderVariant1()}
 
           {/* Mobile: Sticky Date Range Indicator above items */}
           <div className="md:hidden sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border py-3 mb-4 -mx-4 px-4">

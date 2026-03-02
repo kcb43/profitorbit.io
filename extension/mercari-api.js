@@ -619,6 +619,16 @@ async function fetchMercariListings({ page = 1, status = 'on_sale' } = {}) {
 
     console.log('📥 GraphQL response status:', response.status);
 
+    if (response.status === 401 || response.status === 403) {
+      // Auth tokens are dead — clear them so the next attempt triggers a re-login
+      console.warn('🔒 Mercari returned', response.status, '— clearing stale tokens');
+      await chrome.storage.local.remove([
+        'mercari_bearer_token', 'mercari_csrf_token',
+        'mercari_seller_id', 'mercariApiHeaders',
+      ]);
+      throw new Error('Mercari session expired. Please reconnect to Mercari.');
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }

@@ -1811,14 +1811,7 @@ export default function Crosslist() {
             <Button
               variant="default"
               className="whitespace-nowrap gap-2 bg-blue-600 hover:bg-blue-700"
-              onClick={() => navigate(createPageUrl("Import"), {
-                state: {
-                  from: {
-                    pathname: location.pathname,
-                    search: location.search || "",
-                  }
-                }
-              })}
+              onClick={() => navigate(createPageUrl("Sales") + "?import=open")}
             >
               <Download className="w-4 h-4" />
               Import
@@ -1963,14 +1956,7 @@ export default function Crosslist() {
               <Button
                 variant="default"
                 className="w-full md:w-auto whitespace-nowrap flex-shrink-0 bg-blue-600 hover:bg-blue-700"
-                onClick={() => navigate(createPageUrl("Import"), {
-                  state: {
-                    from: {
-                      pathname: location.pathname,
-                      search: location.search || "",
-                    }
-                  }
-                })}
+                onClick={() => navigate(createPageUrl("Sales") + "?import=open")}
               >
                 <Download className="w-4 h-4 mr-2" />
                 Import

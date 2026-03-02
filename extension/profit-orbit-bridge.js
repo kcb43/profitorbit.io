@@ -205,6 +205,11 @@ window.addEventListener("message", (event) => {
     return;
   }
 
+  if (msg.type === "PO_GET_MERCARI_CAPTURED_OPS") {
+    poTrySendMessage({ type: "GET_MERCARI_CAPTURED_OPS" }, "PO_GET_MERCARI_CAPTURED_OPS_RESULT");
+    return;
+  }
+
   // Facebook API recorder controls (for API-mode reverse engineering)
   if (msg.type === "PO_START_FACEBOOK_API_RECORDING") {
     poTrySendMessage({ type: "START_FACEBOOK_API_RECORDING" }, "PO_START_FACEBOOK_API_RECORDING_RESULT");

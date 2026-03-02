@@ -229,19 +229,21 @@ export function ProductSearchDialog({ open, onOpenChange, initialQuery = '' }) {
               <div>
                 <label className="text-sm font-medium mb-1 block">Min Price</label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   placeholder="$0"
                   value={filters.minPrice}
-                  onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
+                  onChange={(e) => { const v = e.target.value; if (v === '' || /^\d*\.?\d*$/.test(v)) setFilters({ ...filters, minPrice: v }); }}
                 />
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Max Price</label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   placeholder="$9999"
                   value={filters.maxPrice}
-                  onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
+                  onChange={(e) => { const v = e.target.value; if (v === '' || /^\d*\.?\d*$/.test(v)) setFilters({ ...filters, maxPrice: v }); }}
                 />
               </div>
               <div>

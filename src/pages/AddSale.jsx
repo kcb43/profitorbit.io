@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { SOURCE_GROUPS, ALL_SOURCES, PLATFORM_GROUPS, ALL_PLATFORMS, getLogoUrl } from "@/constants/marketplaces";
 import { useCustomSources } from "@/hooks/useCustomSources";
 import { BrandCombobox } from "@/components/BrandCombobox";
+import { CategoryCombobox } from "@/components/CategoryCombobox";
 import { ArrowLeft, Save, Calculator, Calendar as CalendarIcon, BarChart, Camera, Truck, Plus, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -429,7 +430,7 @@ export default function AddSale() {
         }
       }
 
-      navigate(createPageUrl(saleId || copyId ? "SalesHistory" : "Dashboard"));
+      navigate(createPageUrl(saleId || copyId ? "Sales" : "Dashboard"));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
@@ -641,7 +642,7 @@ export default function AddSale() {
               if (window.history.length > 1) {
                 navigate(-1);
               } else {
-                navigate(createPageUrl(saleId || copyId ? "SalesHistory" : "Dashboard"));
+                navigate(createPageUrl(saleId || copyId ? "Sales" : "Dashboard"));
               }
             }}
           >
@@ -1282,19 +1283,10 @@ export default function AddSale() {
                     </svg>
                     Category
                   </Label>
-                  <Select
-                    onValueChange={handleCategorySelectChange}
-                    value={isOtherCategory ? 'other' : formData.category}
-                  >
-                    <SelectTrigger id="category_select" className="w-full text-foreground bg-background">
-                      <SelectValue placeholder="Select a category">{isOtherCategory && formData.category ? formData.category : (PREDEFINED_CATEGORIES.includes(formData.category) ? formData.category : "Select a category")}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover text-popover-foreground">
-                      {PREDEFINED_CATEGORIES.map(cat => (
-                        <SelectItem key={cat} value={cat} className="text-foreground">{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CategoryCombobox
+                    value={formData.category || ''}
+                    onChange={(cat) => handleCategorySelectChange(cat)}
+                  />
                 </div>
 
                 {/* Brand field — same combobox as Add Inventory */}
@@ -1508,7 +1500,7 @@ export default function AddSale() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate(createPageUrl(saleId || copyId ? "SalesHistory" : "Dashboard"))}
+                  onClick={() => navigate(createPageUrl(saleId || copyId ? "Sales" : "Dashboard"))}
                 >
                   Cancel
                 </Button>

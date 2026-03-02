@@ -151,18 +151,20 @@ function PagesContent() {
               />
               
               <Route
-                path="/SalesHistory"
+                path="/sales"
                 element={
                   <AuthGuard>
                     {withSuspense(
-                      <Layout currentPageName="SalesHistory">
+                      <Layout currentPageName="Sales">
                         {withSuspense(<SalesHistory />)}
                       </Layout>
                     )}
                   </AuthGuard>
                 }
               />
-              
+              <Route path="/SalesHistory" element={<Navigate to="/sales" replace />} />
+              <Route path="/saleshistory" element={<Navigate to="/sales" replace />} />
+
               <Route
                 path="/Inventory"
                 element={
@@ -278,18 +280,8 @@ function PagesContent() {
                 }
               />
               
-              <Route
-                path="/Import"
-                element={
-                  <AuthGuard>
-                    {withSuspense(
-                      <Layout currentPageName="Import">
-                        {withSuspense(<Import />)}
-                      </Layout>
-                    )}
-                  </AuthGuard>
-                }
-              />
+              <Route path="/Import" element={<Navigate to="/sales?import=open" replace />} />
+              <Route path="/import" element={<Navigate to="/sales?import=open" replace />} />
               
               <Route
                 path="/crosslisting"

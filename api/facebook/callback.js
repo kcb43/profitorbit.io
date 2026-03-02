@@ -87,7 +87,6 @@ export default async function handler(req, res) {
         error_reason,
         error_description,
         query: req.query,
-        redirectUri: redirectUri,
       });
       
       let errorMsg = error_description || error_reason || error || 'Unknown OAuth error';

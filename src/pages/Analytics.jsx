@@ -66,9 +66,9 @@ export default function Analytics() {
             gradient="from-purple-500 to-pink-600"
           />
           <HubCard
-            title="Sales History"
+            title="Sales"
             description="View and manage all your sales"
-            to={createPageUrl("SalesHistory")}
+            to={createPageUrl("Sales")}
             icon={History}
             gradient="from-blue-500 to-cyan-500"
           />

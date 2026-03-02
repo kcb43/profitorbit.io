@@ -14,7 +14,13 @@ import DatePickerInput from "@/components/DatePickerInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Trash2, Package, Pencil, Copy, ArchiveRestore, TrendingUp, Zap, CalendarIcon as Calendar, Archive, Check, X, Grid2X2, Rows, Link2, Plus, RefreshCw } from "lucide-react";
+import { Search, Filter, Trash2, Package, Pencil, Copy, ArchiveRestore, TrendingUp, Zap, CalendarIcon as Calendar, Archive, Check, X, Grid2X2, Rows, Link2, Plus, RefreshCw, Download, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format, parseISO, differenceInDays, endOfDay, isAfter } from 'date-fns';
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -47,6 +53,7 @@ import { openAuthExport } from "@/utils/exportWithAuth";
 import MobileFilterBar from "@/components/mobile/MobileFilterBar";
 import SelectionBanner from "@/components/SelectionBanner";
 import { syncSalesForInventoryItemIds } from "@/services/salesSync";
+import ImportDialog from "@/components/import/ImportDialog";
 
 const platformIcons = {
   ebay: "https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg",
@@ -95,6 +102,19 @@ export default function SalesHistory() {
   const highlightRef = useRef(null);
   
   const [syncLoading, setSyncLoading] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  // Auto-open import dialog when navigated with ?import=open
+  useEffect(() => {
+    if (searchParams.get('import') === 'open') {
+      setImportDialogOpen(true);
+      // Clean the param so closing and reopening doesn't re-trigger
+      const next = new URLSearchParams(searchParams);
+      next.delete('import');
+      setSearchParams(next, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [filters, setFilters] = useState({
     searchTerm: "",
     platform: "all",
@@ -1204,7 +1224,8 @@ export default function SalesHistory() {
   };
 
   const topOffset = React.useMemo(() => {
-    return selectedSales.length > 0 ? (isMobile ? 'calc(env(safe-area-inset-top, 0px) + 50px)' : '50px') : undefined;
+    // On mobile, selection banner is still a fixed overlay; on desktop it's inside the floating bar
+    return (isMobile && selectedSales.length > 0) ? 'calc(env(safe-area-inset-top, 0px) + 50px)' : undefined;
   }, [selectedSales.length, isMobile]);
 
   return (
@@ -1217,73 +1238,95 @@ export default function SalesHistory() {
       />
       <div className="p-4 md:p-6 lg:p-8 w-full" style={{ paddingTop: topOffset }}>
         <div className="max-w-7xl mx-auto min-w-0 space-y-6">
-        <div className="mb-8 min-w-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground break-words">Sales History</h1>
-            <p className="text-muted-foreground mt-1 break-words">View and manage all your sales</p>
-          </div>
-          <div className="flex gap-2 flex-shrink-0">
+        {/* ── Header: Title + actions ── */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold text-foreground">Sales</h1>
+          <div className="flex items-center gap-2">
             <Button
-              variant="outline"
               size="sm"
-              disabled={syncLoading}
-              onClick={async () => {
-                try {
-                  setSyncLoading(true);
-                  toast({ title: "Syncing sales...", description: "Checking Mercari + eBay listing statuses." });
-                  // Get auth session for API call
-                  let session = null;
-                  for (let i = 0; i < 8; i++) {
-                    const res = await supabase.auth.getSession();
-                    session = res?.data?.session || null;
-                    if (session?.access_token) break;
-                    await new Promise((r) => setTimeout(r, 150));
-                  }
-                  const authHeaders = {
-                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-                    ...(session?.user?.id ? { 'x-user-id': session.user.id } : {}),
-                  };
-                  const idsResp = await fetch("/api/inventory?fields=id&exclude_deleted=true&exclude_status=sold&limit=5000", { headers: authHeaders });
-                  const idsData = await idsResp.json();
-                  const ids = Array.isArray(idsData?.data) ? idsData.data.map((i) => i.id).filter(Boolean) : [];
-                  if (ids.length === 0) {
-                    toast({ title: "No items to sync", description: "No active inventory items found." });
-                    return;
-                  }
-                  const summary = await syncSalesForInventoryItemIds(ids, { marketplaces: ["mercari", "ebay"] });
-                  toast({
-                    title: "Sales sync complete",
-                    description: `Sold: ${summary.sold} \u2022 Delisted: ${summary.delisted} \u2022 Sales created: ${summary.createdSales}`,
-                  });
-                  queryClient.invalidateQueries(["sales"]);
-                  queryClient.invalidateQueries(["inventoryItems"]);
-                } catch (e) {
-                  toast({ title: "Sync failed", description: e?.message, variant: "destructive" });
-                } finally {
-                  setSyncLoading(false);
-                }
-              }}
+              variant="outline"
+              className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950"
+              onClick={() => setImportDialogOpen(true)}
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${syncLoading ? "animate-spin" : ""}`} />
-              Sync Sales
+              <Download className="w-4 h-4" />
+              Import
             </Button>
             <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
               onClick={() => navigate(createPageUrl("PlatformPerformance"))}
-              className="bg-green-600 hover:bg-green-700 text-white"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               Add Sale
             </Button>
-            {!isMobile && (
-              <Button
-                variant="outline"
-                onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}
-                className="flex-shrink-0"
-              >
-                {viewMode === "list" ? <Grid2X2 className="w-4 h-4 mr-2" /> : <Rows className="w-4 h-4 mr-2" />}
-                {viewMode === "list" ? "Grid View" : "List View"}
-              </Button>
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" className="px-2">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  disabled={syncLoading}
+                  onClick={async () => {
+                    try {
+                      setSyncLoading(true);
+                      toast({ title: "Syncing sales...", description: "Checking Mercari + eBay listing statuses." });
+                      let session = null;
+                      for (let i = 0; i < 8; i++) {
+                        const res = await supabase.auth.getSession();
+                        session = res?.data?.session || null;
+                        if (session?.access_token) break;
+                        await new Promise((r) => setTimeout(r, 150));
+                      }
+                      const authHeaders = {
+                        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                        ...(session?.user?.id ? { 'x-user-id': session.user.id } : {}),
+                      };
+                      const idsResp = await fetch("/api/inventory?fields=id&exclude_deleted=true&exclude_status=sold&limit=5000", { headers: authHeaders });
+                      const idsData = await idsResp.json();
+                      const ids = Array.isArray(idsData?.data) ? idsData.data.map((i) => i.id).filter(Boolean) : [];
+                      if (ids.length === 0) {
+                        toast({ title: "No items to sync", description: "No active inventory items found." });
+                        return;
+                      }
+                      const summary = await syncSalesForInventoryItemIds(ids, { marketplaces: ["mercari", "ebay"] });
+                      toast({
+                        title: "Sales sync complete",
+                        description: `Sold: ${summary.sold} \u2022 Delisted: ${summary.delisted} \u2022 Sales created: ${summary.createdSales}`,
+                      });
+                      queryClient.invalidateQueries(["sales"]);
+                      queryClient.invalidateQueries(["inventoryItems"]);
+                    } catch (e) {
+                      toast({ title: "Sync failed", description: e?.message, variant: "destructive" });
+                    } finally {
+                      setSyncLoading(false);
+                    }
+                  }}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${syncLoading ? "animate-spin" : ""}`} />
+                  {syncLoading ? "Syncing..." : "Sync Sales"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  const params = {};
+                  if (showDeletedOnly) params.deleted_only = 'true';
+                  else params.include_deleted = 'false';
+                  if (!filters.needsReview && filters.searchTerm?.trim()) params.search = filters.searchTerm.trim();
+                  if (filters.platform && filters.platform !== 'all') params.platform = filters.platform;
+                  if (filters.category && filters.category !== 'all') params.category = filters.category;
+                  if (filters.minProfit !== '') params.min_profit = String(filters.minProfit);
+                  if (filters.maxProfit !== '') params.max_profit = String(filters.maxProfit);
+                  if (filters.startDate) params.from = filters.startDate.toISOString().slice(0, 10);
+                  if (filters.endDate) params.to = filters.endDate.toISOString().slice(0, 10);
+                  if (filters.needsReview) params.needs_review = 'true';
+                  params.limit = '5000';
+                  openAuthExport('/api/sales/export', params);
+                }}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -1358,11 +1401,11 @@ export default function SalesHistory() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label htmlFor="mobile-min-profit" className="text-xs mb-1.5 block">Min Profit</Label>
-                    <Input id="mobile-min-profit" type="number" placeholder="$ Min" value={filters.minProfit} onChange={e => handleFilterChange('minProfit', e.target.value)} />
+                    <Input id="mobile-min-profit" type="text" inputMode="numeric" placeholder="$ Min" value={filters.minProfit} onChange={e => { const v = e.target.value; if (v === '' || v === '-' || /^-?\d*\.?\d*$/.test(v)) handleFilterChange('minProfit', v); }} />
                   </div>
                   <div>
                     <Label htmlFor="mobile-max-profit" className="text-xs mb-1.5 block">Max Profit</Label>
-                    <Input id="mobile-max-profit" type="number" placeholder="$ Max" value={filters.maxProfit} onChange={e => handleFilterChange('maxProfit', e.target.value)} />
+                    <Input id="mobile-max-profit" type="text" inputMode="numeric" placeholder="$ Max" value={filters.maxProfit} onChange={e => { const v = e.target.value; if (v === '' || v === '-' || /^-?\d*\.?\d*$/.test(v)) handleFilterChange('maxProfit', v); }} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -1420,300 +1463,238 @@ export default function SalesHistory() {
           />
         </div>
 
-        {/* Desktop Filter Card */}
-        <Card className="hidden md:block border-0 shadow-lg mb-6">
-          <CardHeader className="border-b bg-card">
-            <CardTitle className="flex items-center gap-2 text-foreground break-words">
-              <Filter className="w-5 h-5 flex-shrink-0" />
-              Filters & Sort
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
-              <div className="text-xs text-muted-foreground">
-                Showing <span className="font-semibold text-foreground">{rawSales.length}</span>
-                {totalSales ? (
-                  <>
-                    {" "}
-                    of <span className="font-semibold text-foreground">{totalSales}</span>
-                  </>
-                ) : null}
-                {" "}sales
-                {" "}• page <span className="font-semibold text-foreground">{pageIndex + 1}</span>
-                {" "}of <span className="font-semibold text-foreground">{totalPages}</span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Label className="text-xs text-muted-foreground">Per Page:</Label>
-                <Select
-                  value={String(pageSize)}
-                  onValueChange={(v) => {
-                    const n = Number(v);
-                    if (n === 50 || n === 100 || n === 200) setPageSize(n);
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-[85px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                    <SelectItem value="200">200</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!canPrev}
-                  onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
-                >
-                  Prev
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!canNext}
-                  onClick={() => setPageIndex((p) => p + 1)}
-                >
-                  Next
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const params = {};
-                    if (showDeletedOnly) params.deleted_only = 'true';
-                    else params.include_deleted = 'false';
-                    if (!filters.needsReview && filters.searchTerm?.trim()) params.search = filters.searchTerm.trim();
-                    if (filters.platform && filters.platform !== 'all') params.platform = filters.platform;
-                    if (filters.category && filters.category !== 'all') params.category = filters.category;
-                    if (filters.minProfit !== '') params.min_profit = String(filters.minProfit);
-                    if (filters.maxProfit !== '') params.max_profit = String(filters.maxProfit);
-                    if (filters.startDate) params.from = filters.startDate.toISOString().slice(0, 10);
-                    if (filters.endDate) params.to = filters.endDate.toISOString().slice(0, 10);
-                    if (filters.needsReview) params.needs_review = 'true';
-                    params.limit = '5000';
-                    openAuthExport('/api/sales/export', params);
-                  }}
-                  className="flex items-center gap-2 min-w-0 max-w-full"
-                >
-                  Export
-                </Button>
-              </div>
+        {/* ── Unified filter bar (desktop) ── */}
+        <div className="hidden md:block bg-muted/40 rounded-xl p-2.5 space-y-2">
+          {/* Row 1: Search + Platform + Category + Sort */}
+          <div className="flex items-center gap-2">
+            {/* Search */}
+            <div className="relative flex-1 max-w-xs">
+              <Input
+                placeholder={filters.needsReview ? "Search disabled" : "Search..."}
+                value={filters.searchTerm}
+                onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+                disabled={filters.needsReview}
+                className="pl-8 h-9 bg-background border-border/50"
+              />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 min-w-0">
-              <div className="relative min-w-0">
-                <Label htmlFor="search" className="text-xs sm:text-sm mb-1.5 block break-words">Search</Label>
-                <Search className="absolute left-3 bottom-2.5 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground pointer-events-none z-10" />
-                <Input
-                  id="search"
-                  placeholder={filters.needsReview ? "Needs Review enabled (search disabled)" : "Item name, category, source..."}
-                  value={filters.searchTerm}
-                  onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-                  disabled={filters.needsReview}
-                  className="pl-9 sm:pl-10 w-full"
-                />
-              </div>
-              <div className="min-w-0">
-                <Label htmlFor="platform" className="text-xs sm:text-sm mb-1.5 block break-words">Platform</Label>
-                <Select value={filters.platform} onValueChange={(v) => handleFilterChange('platform', v)}>
-                  <SelectTrigger id="platform" className="w-full">
-                    <SelectValue placeholder="All Platforms" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Platforms</SelectItem>
-                    <SelectItem value="ebay">eBay</SelectItem>
-                    <SelectItem value="facebook_marketplace">Facebook</SelectItem>
-                    <SelectItem value="etsy">Etsy</SelectItem>
-                    <SelectItem value="mercari">Mercari</SelectItem>
-                    <SelectItem value="offer_up">OfferUp</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="min-w-0">
-                <Label htmlFor="category" className="text-xs sm:text-sm mb-1.5 block break-words">Category</Label>
-                <Select value={filters.category} onValueChange={(v) => handleFilterChange('category', v)}>
-                  <SelectTrigger id="category" className="w-full">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="__uncategorized">Uncategorized</SelectItem>
-                    {PREDEFINED_CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-               <div className="grid grid-cols-2 gap-2 min-w-0">
-                  <div className="min-w-0">
-                    <Label htmlFor="min-profit" className="text-xs sm:text-sm mb-1.5 block break-words">Min Profit</Label>
-                    <Input id="min-profit" type="number" placeholder="$ Min" value={filters.minProfit} onChange={e => handleFilterChange('minProfit', e.target.value)} className="w-full" />
-                  </div>
-                  <div className="min-w-0">
-                    <Label htmlFor="max-profit" className="text-xs sm:text-sm mb-1.5 block break-words">Max Profit</Label>
-                    <Input id="max-profit" type="number" placeholder="$ Max" value={filters.maxProfit} onChange={e => handleFilterChange('maxProfit', e.target.value)} className="w-full" />
-                  </div>
-               </div>
-               <div className="grid grid-cols-2 gap-2 min-w-0">
-                  <div className="min-w-0">
-                    <Label className="text-xs sm:text-sm mb-1.5 block break-words">Sale Start Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal text-xs sm:text-sm">
-                          <Calendar className="mr-2 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                          <span className="truncate">{filters.startDate ? format(filters.startDate, "MMM d, yyyy") : "Pick Date"}</span>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <CalendarPicker mode="single" selected={filters.startDate} onSelect={d => handleFilterChange('startDate', d)} initialFocus />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="min-w-0">
-                    <Label className="text-xs sm:text-sm mb-1.5 block break-words">Sale End Date</Label>
-                     <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal text-xs sm:text-sm">
-                          <Calendar className="mr-2 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                          <span className="truncate">{filters.endDate ? format(filters.endDate, "MMM d, yyyy") : "Pick Date"}</span>
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <CalendarPicker mode="single" selected={filters.endDate} onSelect={d => handleFilterChange('endDate', d)} initialFocus />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-               </div>
+            <div className="w-px h-6 bg-border/60" />
+
+            {/* Platform */}
+            <Select value={filters.platform} onValueChange={(v) => handleFilterChange('platform', v)}>
+              <SelectTrigger className="h-9 w-[140px] bg-background border-border/50">
+                <SelectValue placeholder="All Platforms" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Platforms</SelectItem>
+                <SelectItem value="ebay">eBay</SelectItem>
+                <SelectItem value="facebook_marketplace">Facebook</SelectItem>
+                <SelectItem value="etsy">Etsy</SelectItem>
+                <SelectItem value="mercari">Mercari</SelectItem>
+                <SelectItem value="offer_up">OfferUp</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Category */}
+            <Select value={filters.category} onValueChange={(v) => handleFilterChange('category', v)}>
+              <SelectTrigger className="h-9 w-[150px] bg-background border-border/50">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="__uncategorized">Uncategorized</SelectItem>
+                {PREDEFINED_CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="w-px h-6 bg-border/60" />
+
+            {/* Sort */}
+            <Select value={sort.by} onValueChange={(v) => setSort({ by: v })}>
+              <SelectTrigger className="h-9 w-[150px] bg-background border-border/50">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sale_date">Most Recent</SelectItem>
+                <SelectItem value="profit">Highest Profit</SelectItem>
+                <SelectItem value="roi">Highest ROI</SelectItem>
+                <SelectItem value="sale_speed">Fastest Sale</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Clear all */}
+            {(filters.searchTerm || filters.platform !== 'all' || filters.category !== 'all' || filters.minProfit !== '' || filters.maxProfit !== '' || filters.startDate || filters.endDate || filters.needsReview) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-muted-foreground hover:text-foreground ml-auto"
+                onClick={() => {
+                  handleFilterChange('searchTerm', '');
+                  handleFilterChange('platform', 'all');
+                  handleFilterChange('category', 'all');
+                  handleFilterChange('minProfit', '');
+                  handleFilterChange('maxProfit', '');
+                  handleFilterChange('startDate', null);
+                  handleFilterChange('endDate', null);
+                  handleFilterChange('needsReview', false);
+                }}
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
+
+          {/* Row 2: Date range + Profit range + Needs Review */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Date range */}
+            <span className="text-xs text-muted-foreground">Date:</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 px-2.5 bg-background border border-border/50 text-xs gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {filters.startDate ? format(filters.startDate, "M/d/yy") : "From"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <CalendarPicker mode="single" selected={filters.startDate} onSelect={d => handleFilterChange('startDate', d)} initialFocus />
+              </PopoverContent>
+            </Popover>
+            <span className="text-xs text-muted-foreground">–</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 px-2.5 bg-background border border-border/50 text-xs gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {filters.endDate ? format(filters.endDate, "M/d/yy") : "To"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <CalendarPicker mode="single" selected={filters.endDate} onSelect={d => handleFilterChange('endDate', d)} initialFocus />
+              </PopoverContent>
+            </Popover>
+
+            <div className="w-px h-6 bg-border/60" />
+
+            {/* Profit range — grouped so they never wrap apart */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Profit:</span>
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="$ Min"
+                value={filters.minProfit}
+                onChange={e => { const v = e.target.value; if (v === '' || v === '-' || /^-?\d*\.?\d*$/.test(v)) handleFilterChange('minProfit', v); }}
+                className="h-8 w-[90px] bg-background border-border/50 text-xs"
+              />
+              <span className="text-xs text-muted-foreground">–</span>
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="$ Max"
+                value={filters.maxProfit}
+                onChange={e => { const v = e.target.value; if (v === '' || v === '-' || /^-?\d*\.?\d*$/.test(v)) handleFilterChange('maxProfit', v); }}
+                className="h-8 w-[90px] bg-background border-border/50 text-xs"
+              />
             </div>
 
-            <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="needs-review"
-                  checked={filters.needsReview}
-                  onCheckedChange={(v) => handleFilterChange('needsReview', v)}
-                />
-                <Label htmlFor="needs-review" className="text-xs sm:text-sm text-foreground">
-                  Needs Review (missing inventory link / purchase date / source / category)
-                </Label>
-              </div>
-              {!showDeletedOnly && needsReviewTotal > 0 && (
+            {/* Needs Review */}
+            {!showDeletedOnly && needsReviewTotal > 0 && (
+              <>
+                <div className="w-px h-6 bg-border/60" />
                 <Button
-                  variant={filters.needsReview ? "default" : "outline"}
+                  variant={filters.needsReview ? "default" : "ghost"}
                   size="sm"
-                  className="whitespace-nowrap text-xs sm:text-sm"
+                  className="h-8 px-2 gap-1 text-xs"
                   onClick={() => handleFilterChange('needsReview', !filters.needsReview)}
                 >
-                  {filters.needsReview ? "Showing Needs Review" : `Review (${needsReviewTotal})`}
+                  <Filter className="w-3.5 h-3.5" />
+                  Review ({needsReviewTotal})
                 </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </>
+            )}
+          </div>
+        </div>
 
-        <Card className="border-0 shadow-lg w-full min-w-0 max-w-full overflow-x-hidden">
-          <CardHeader className="border-b bg-card">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 min-w-0">
-              {selectedSales.length > 0 ? (
-                <>
-                  <CardTitle className="text-foreground break-words">{selectedSales.length} sale(s) selected</CardTitle>
-                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+        {/* ── Select all + view toggle strip ── */}
+        {filteredSales.length > 0 && (
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/40">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={selectedSales.length === filteredSales.length && filteredSales.length > 0}
+                onCheckedChange={handleSelectAll}
+                id="select-all"
+                className="!h-[18px] !w-[18px] !border-muted-foreground/40 data-[state=checked]:!bg-emerald-600 data-[state=checked]:!border-emerald-600"
+              />
+              <span className={`text-xs ${selectedSales.length > 0 ? "text-emerald-600 font-medium" : "text-muted-foreground"}`}>
+                {selectedSales.length > 0
+                  ? `${selectedSales.length} selected`
+                  : `Select All (${filteredSales.length})`}
+              </span>
+              {selectedSales.length > 0 && (
+                <div className="flex items-center gap-1.5 ml-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      resetBulkUpdateForm();
+                      setBulkUpdateDialogOpen(true);
+                    }}
+                    disabled={bulkUpdateMutation.isPending}
+                  >
+                    {bulkUpdateMutation.isPending ? "Updating..." : "Bulk Update"}
+                  </Button>
+                  {showDeletedOnly ? (
                     <Button
-                      variant="outline"
-                      onClick={() => {
-                        resetBulkUpdateForm();
-                        setBulkUpdateDialogOpen(true);
-                      }}
-                      disabled={bulkUpdateMutation.isPending}
-                      className="w-full sm:w-auto"
+                      variant="destructive"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setBulkPermanentDeleteDialogOpen(true)}
+                      disabled={bulkPermanentDeleteMutation.isPending}
                     >
-                      {bulkUpdateMutation.isPending ? "Updating..." : "Bulk Update"}
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      {bulkPermanentDeleteMutation.isPending ? "Deleting..." : "Delete"}
                     </Button>
-                    {showDeletedOnly ? (
-                      <Button
-                        variant="destructive"
-                        onClick={() => setBulkPermanentDeleteDialogOpen(true)}
-                        disabled={bulkPermanentDeleteMutation.isPending}
-                        className="w-full sm:w-auto"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        {bulkPermanentDeleteMutation.isPending ? "Permanently Deleting..." : "Permanently Delete Selected"}
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="destructive"
-                        onClick={() => setBulkDeleteDialogOpen(true)}
-                        disabled={bulkDeleteMutation.isPending}
-                        className="w-full sm:w-auto"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        {bulkDeleteMutation.isPending ? "Deleting..." : "Delete Selected"}
-                      </Button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <CardTitle className="text-white break-words">
-                    {showDeletedOnly ? "Deleted Sales" : "All Sales"}
-                  </CardTitle>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 min-w-0 w-full sm:w-auto">
-                    {/* Sort dropdown */}
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="sort-by" className="text-xs sm:text-sm font-medium text-white whitespace-nowrap">
-                        Sort By:
-                      </Label>
-                      <Select value={sort.by} onValueChange={(v) => setSort({ by: v })}>
-                        <SelectTrigger id="sort-by" className="w-full sm:w-[180px]">
-                          <SelectValue placeholder="Sort by" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sale_date">Most Recent</SelectItem>
-                          <SelectItem value="profit">Highest Profit</SelectItem>
-                          <SelectItem value="roi">Highest ROI</SelectItem>
-                          <SelectItem value="sale_speed">Fastest Sale</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {/* Show count to the right of Sort By (desktop only) */}
-                      <span className="hidden lg:block text-sm text-white/80 whitespace-nowrap">
-                        Showing {filteredSales.length} {filteredSales.length === 1 ? 'sale' : 'sales'}
-                      </span>
-                    </div>
-                  </div>
-                </>
+                  ) : (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setBulkDeleteDialogOpen(true)}
+                      disabled={bulkDeleteMutation.isPending}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
-          </CardHeader>
-          <CardContent className="p-0 overflow-x-hidden">
-            {isLoading ? (
-              <div className="p-8 text-center text-muted-foreground">Loading...</div>
-            ) : (
-              <div className="w-full min-w-0 overflow-x-hidden px-1 sm:px-0">
-                {filteredSales.length > 0 && (
-                  <div className="flex items-center justify-between gap-3 p-4 bg-card rounded-t-lg">
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={selectedSales.length === filteredSales.length && filteredSales.length > 0}
-                        onCheckedChange={handleSelectAll}
-                        id="select-all"
-                        className="!h-[22px] !w-[22px] !bg-transparent !border-green-600 border-2 data-[state=checked]:!bg-green-600 data-[state=checked]:!border-green-600 [&[data-state=checked]]:!bg-green-600 [&[data-state=checked]]:!border-green-600 flex-shrink-0 [&_svg]:!h-[16px] [&_svg]:!w-[16px]"
-                      />
-                      <div className="flex flex-col">
-                        <label htmlFor="select-all" className="text-sm font-medium cursor-pointer text-foreground">
-                          Select All ({filteredSales.length})
-                        </label>
-                        <span className="text-xs text-muted-foreground md:hidden">
-                          Tap image to select
-                        </span>
-                        <span className="text-xs text-muted-foreground hidden md:block">Click image to select for bulk edit</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+            <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <Grid2X2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <Rows className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Content ── */}
+        <div className="w-full min-w-0 overflow-x-hidden">
+          {isLoading ? (
+            <div className="p-8 text-center text-muted-foreground">Loading...</div>
+          ) : (
+            <div className="w-full min-w-0 overflow-x-hidden px-1 sm:px-0">
                 {filteredSales.length === 0 && (
                   <div className="p-12 text-center">
                     <Package className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-muted-foreground" />
@@ -2398,33 +2379,34 @@ export default function SalesHistory() {
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
-        
-        {/* Bottom Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-6 pb-6">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
-              disabled={pageIndex === 0}
-            >
-              Prev
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {pageIndex + 1} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPageIndex((p) => p + 1)}
-              disabled={pageIndex >= totalPages - 1}
-            >
-              Next
-            </Button>
           </div>
-        )}
+
+        {/* ── Pagination footer ── */}
+        <div className="flex items-center justify-between px-1 py-2 text-xs text-muted-foreground">
+          <span>
+            Page {pageIndex + 1} of {totalPages}
+            {totalSales > 0 && <span className="ml-1">· {totalSales} sales</span>}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" disabled={!canPrev} onClick={() => setPageIndex(p => Math.max(0, p - 1))} className="h-7 w-7 p-0">
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="sm" disabled={!canNext} onClick={() => setPageIndex(p => p + 1)} className="h-7 w-7 p-0">
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            <div className="w-px h-4 bg-border/60" />
+            <Select value={String(pageSize)} onValueChange={v => { const n = Number(v); if ([50, 100, 200].includes(n)) setPageSize(n); }}>
+              <SelectTrigger className="h-7 w-[70px] text-xs border-0 bg-transparent">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="200">200</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         </div>
 
       <Dialog
@@ -2746,6 +2728,8 @@ export default function SalesHistory() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImportDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
       </div>
     </div>
   );

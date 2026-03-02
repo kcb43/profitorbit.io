@@ -3246,77 +3246,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
   
-  // Handle request to scrape Mercari listings (from Import page)
-  if (type === 'SCRAPE_MERCARI_LISTINGS') {
-    (async () => {
-      try {
-        const requestedStatus = message.status || 'on_sale'; // Get status from message payload
-        console.log('📡 SCRAPE_MERCARI_LISTINGS received - using GraphQL API with status:', requestedStatus);
-        
-        // Check if mercari-api.js is loaded
-        if (!self.__mercariApi) {
-          console.error('❌ mercari-api.js not loaded');
-          sendResponse({
-            success: false,
-            error: 'Mercari API module not available',
-          });
-          return;
-        }
-        
-        // Check for existing Mercari tabs and try to capture tokens
-        const mercariTabs = await chrome.tabs.query({ url: '*://www.mercari.com/*' });
-        
-        if (mercariTabs && mercariTabs.length > 0) {
-          console.log('📡 Found', mercariTabs.length, 'Mercari tab(s), requesting token capture...');
-          
-          // Send message to all Mercari tabs to trigger token capture
-          for (const tab of mercariTabs) {
-            try {
-              await chrome.tabs.sendMessage(tab.id, { type: 'CHECK_LOGIN' });
-            } catch (e) {
-              console.log('⚠️ Could not send message to tab', tab.id);
-            }
-          }
-          
-          // Wait a bit for tokens to be captured
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        
-        console.log('✅ Mercari auth ready, fetching listings via API with status:', requestedStatus);
-        
-        // Fetch listings using the API module with the requested status
-        const result = await self.__mercariApi.fetchMercariListings({
-          page: 1,
-          status: requestedStatus
-        });
-        
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to fetch Mercari listings');
-        }
-        
-        console.log('✅ Fetched listings via API:', result.listings?.length || 0);
-        
-        // Store in extension storage for the web app
-        await chrome.storage.local.set({
-          'mercari_listings': result.listings || [],
-          'mercari_listings_total': result.pagination?.totalCount || 0,
-          'mercari_listings_timestamp': Date.now(),
-        });
-        
-        // Send response
-        sendResponse(result);
-        
-      } catch (error) {
-        console.error('❌ Error handling SCRAPE_MERCARI_LISTINGS:', error);
-        sendResponse({
-          success: false,
-          error: error.message || 'Failed to fetch Mercari listings',
-        });
-      }
-    })();
-    
-    return true; // Keep channel open for async response
-  }
+  // NOTE: SCRAPE_MERCARI_LISTINGS is handled earlier (~line 3018). Duplicate removed.
 
   if (type && type.endsWith('_LOGIN_STATUS')) {
     const marketplace = message.marketplace;
@@ -3529,6 +3459,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     mercariApiRecorder.records = [];
     mercariApiRecorder.pending.clear();
     sendResponse({ success: true });
+    return true;
+  }
+
+  // Get captured Mercari GraphQL operations (for discovering mutation hashes)
+  if (type === 'GET_MERCARI_CAPTURED_OPS') {
+    chrome.storage.local.get('mercari_captured_ops', (result) => {
+      sendResponse({ success: true, ops: result.mercari_captured_ops || {} });
+    });
     return true;
   }
 

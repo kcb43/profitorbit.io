@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInDays, isAfter } from "date-fns";
-import { Plus, Minus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical, AlertTriangle, Link as LinkIcon, Loader2, FolderPlus, Folders, Camera, Rocket } from "lucide-react";
+import { Plus, Minus, Package, DollarSign, Trash2, Edit, ShoppingCart, Tag, Filter, AlarmClock, Copy, BarChart, Star, X, TrendingUp, Database, ImageIcon, ArchiveRestore, Archive, Grid2X2, Rows, Check, Facebook, Search, GalleryHorizontal, Settings, Download, ChevronDown, ChevronUp, Eye, MoreVertical, AlertTriangle, Link as LinkIcon, Loader2, FolderPlus, Folders, Camera } from "lucide-react";
+import UploadIcon from "@/components/icons/UploadIcon";
 import { Input } from "@/components/ui/input";
 import DatePickerInput from "@/components/DatePickerInput";
 import { Label } from "@/components/ui/label";
@@ -1733,7 +1734,8 @@ export default function InventoryPage() {
   const topOffset = React.useMemo(() => {
     let offset = 0;
     if (activeMode) offset += 50;
-    if (selectedItems.length > 0) offset += 50;
+    // On mobile, selection banner is still a fixed overlay; on desktop it's inside the floating bar
+    if (isMobile && selectedItems.length > 0) offset += 50;
     return offset > 0 ? (isMobile ? `calc(env(safe-area-inset-top, 0px) + ${offset}px)` : `${offset}px`) : undefined;
   }, [activeMode, selectedItems.length, isMobile]);
 
@@ -1874,7 +1876,7 @@ export default function InventoryPage() {
                   onClick={() => openComposer(selectedItems)}
                   className="min-w-0 max-w-full bg-green-600 hover:bg-green-500 text-white"
                 >
-                  <Rocket className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <UploadIcon className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
                   <span className="truncate">List ({selectedItems.length})</span>
                 </Button>
                 <Button
@@ -2397,14 +2399,15 @@ export default function InventoryPage() {
                               <div className="flex justify-between items-center">
                                 <span className="text-[11px] text-gray-600 dark:text-gray-400">Availability:</span>
                                 <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-foreground">
-                                  <span className={`w-2 h-2 rounded-full ${
-                                    item.status === 'sold' || isSoldOut
-                                      ? 'bg-red-500'
-                                      : 'bg-green-500'
-                                  }`} />
-                                  {item.status === 'sold' || isSoldOut
-                                  ? `Sold${quantitySold > 0 ? ` (${quantitySold})` : ''}`
-                                  : `Available${quantitySold > 0 ? ` · ${quantitySold} sold` : ''}`}
+                                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                  {availableToSell} Available
+                                  {quantitySold > 0 && (
+                                    <>
+                                      <span className="text-gray-400 dark:text-gray-500">·</span>
+                                      <span className="w-2 h-2 rounded-full bg-green-500" />
+                                      {quantitySold} Sold
+                                    </>
+                                  )}
                                 </span>
                               </div>
                               
@@ -2580,7 +2583,7 @@ export default function InventoryPage() {
                           onClick={() => openComposer([item.id])}
                           className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold py-2 px-3 rounded-md text-xs shadow-sm"
                         >
-                          <Rocket className="w-3.5 h-3.5 mr-1.5" /> List
+                          <UploadIcon className="w-3 h-3 mr-1.5" /> List
                         </Button>
                         {!isSoldOut && item.status !== 'sold' && (
                           <Button variant="outline" onClick={() => handleMarkAsSold(item)}
@@ -2602,7 +2605,7 @@ export default function InventoryPage() {
                             onClick={(e) => { e.stopPropagation(); openComposer([item.id]); }}
                             className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold py-2.5 px-2 rounded-md text-sm shadow-sm"
                           >
-                            <Rocket className="w-4 h-4 mr-1.5" /> List
+                            <UploadIcon className="w-3.5 h-3.5 mr-1.5" /> List
                           </Button>
                           <div className="flex gap-2">
                             {!isSoldOut && item.status !== 'sold' && (
@@ -2726,14 +2729,15 @@ export default function InventoryPage() {
                             <div className="flex items-center gap-2">
                               <span>Availability:</span>
                               <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-                                <span className={`w-2 h-2 rounded-full ${
-                                  item.status === 'sold' || isSoldOut
-                                    ? 'bg-red-500'
-                                    : 'bg-green-500'
-                                }`} />
-                                {item.status === 'sold' || isSoldOut
-                                  ? `Sold${quantitySold > 0 ? ` (${quantitySold})` : ''}`
-                                  : `Available${quantitySold > 0 ? ` · ${quantitySold} sold` : ''}`}
+                                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                {availableToSell} Available
+                                {quantitySold > 0 && (
+                                  <>
+                                    <span className="text-gray-400 dark:text-gray-500">·</span>
+                                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                                    {quantitySold} Sold
+                                  </>
+                                )}
                               </span>
                             </div>
                             {item.source && (
@@ -2821,7 +2825,7 @@ export default function InventoryPage() {
                             </div>
                             <Button size="sm" onClick={(e) => { e.stopPropagation(); openComposer([item.id]); }}
                               className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold text-xs h-9 rounded-lg shadow-sm">
-                              <Rocket className="w-3.5 h-3.5 mr-1.5" /> List
+                              <UploadIcon className="w-3 h-3 mr-1.5" /> List
                             </Button>
                             {!isSoldOut && item.status !== 'sold' && availableToSell > 0 && (
                               <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleMarkAsSold(item); }}
@@ -3175,7 +3179,7 @@ export default function InventoryPage() {
                           <>
                             <Button size="sm" onClick={() => openComposer([item.id])}
                               className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold text-xs h-8 rounded-lg">
-                              <Rocket className="w-3 h-3 mr-1" /> List
+                              <UploadIcon className="w-2.5 h-2.5 mr-1" /> List
                             </Button>
                             <div className="flex gap-1">
                               {!isSoldOut && item.status !== 'sold' && availableToSell > 0 && (

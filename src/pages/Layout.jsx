@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Activity, Search, Shield, ChevronDown, User, LogOut, Home, ChevronRight, HelpCircle, Gift, FileText, GraduationCap, Newspaper, Truck, Wand2 } from "lucide-react";
+import { LayoutDashboard, Plus, History, Package, BarChart3, GalleryHorizontal, Moon, Sun, CalendarDays, Settings, TrendingDown, Sparkles, Search, Shield, ChevronDown, User, LogOut, Home, ChevronRight, HelpCircle, Gift, FileText, GraduationCap, Newspaper, Truck, Wand2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getNewsBadge } from "@/api/newsApi";
 // CrossSquareIcon import removed - Crosslist merged into Inventory
@@ -27,6 +27,8 @@ import {
 import { Button } from "@/components/ui/button";
 import MobileBottomNav from "@/components/mobile/MobileBottomNav";
 import { supabase } from "@/api/supabaseClient";
+import { SelectionBannerProvider, useSelectionBannerState } from "@/hooks/useSelectionBanner";
+import { X } from "lucide-react";
 
 // Navigation categories
 const navigationCategories = [
@@ -41,9 +43,17 @@ const navigationCategories = [
     title: "Tools",
     items: [
       { title: "Pro Tools", url: createPageUrl("Pro Tools"), icon: Sparkles },
-      { title: "Import", url: createPageUrl("Import"), icon: Activity },
       { title: "Add Sale", url: createPageUrl("AddSale"), icon: Plus },
       { title: "Shipping", url: "/shipping", icon: Truck },
+    ]
+  },
+  {
+    title: "Analytics",
+    items: [
+      { title: "Sales", url: createPageUrl("Sales"), icon: History },
+      { title: "Profit Calendar", url: createPageUrl("ProfitCalendar"), icon: CalendarDays },
+      { title: "Showcase", url: createPageUrl("Gallery"), icon: GalleryHorizontal },
+      { title: "Reports", url: createPageUrl("Reports"), icon: BarChart3 },
     ]
   },
   {
@@ -53,15 +63,6 @@ const navigationCategories = [
       { title: "Deal Curator", url: "/admin/deals", icon: Wand2, adminOnly: true },
       { title: "News", url: "/news", icon: Newspaper, badgeKey: "news" },
       { title: "Training Center", url: "/training", icon: GraduationCap },
-    ]
-  },
-  {
-    title: "Analytics",
-    items: [
-      { title: "Sales History", url: createPageUrl("SalesHistory"), icon: History },
-      { title: "Profit Calendar", url: createPageUrl("ProfitCalendar"), icon: CalendarDays },
-      { title: "Showcase", url: createPageUrl("Gallery"), icon: GalleryHorizontal },
-      { title: "Reports", url: createPageUrl("Reports"), icon: BarChart3 },
     ]
   }
 ];
@@ -75,7 +76,8 @@ const ROUTE_MAP = [
   { path: '/Inventory',                    label: 'Inventory',           icon: Package },
   { path: '/AddInventoryItem',             label: 'Add Inventory',       icon: Package },
   { path: '/AddSale',                      label: 'Add Sale',            icon: Plus },
-  { path: '/SalesHistory',                 label: 'Sales History',       icon: History },
+  { path: '/sales',                        label: 'Sales',               icon: History },
+  { path: '/Sales',                        label: 'Sales',               icon: History },
   { path: '/ProfitCalendar',               label: 'Profit Calendar',     icon: CalendarDays },
   { path: '/Gallery',                      label: 'Showcase',            icon: GalleryHorizontal },
   { path: '/Reports',                      label: 'Reports',             icon: BarChart3 },
@@ -84,7 +86,7 @@ const ROUTE_MAP = [
   { path: '/Crosslisting',                 label: 'Crosslisting',        icon: Sparkles },
   { path: '/crosslisting',                 label: 'Crosslisting',        icon: Sparkles },
   { path: '/Crosslist',                    label: 'Crosslist',           icon: Sparkles },
-  { path: '/Import',                       label: 'Import',              icon: Activity },
+  { path: '/Import',                       label: 'Sales',               icon: History },
   { path: '/Settings/account',             label: 'Account',             icon: Settings, parent: { label: 'Settings', path: '/Settings', icon: Settings } },
   { path: '/Settings/security',            label: 'Security',            icon: Settings, parent: { label: 'Settings', path: '/Settings', icon: Settings } },
   { path: '/Settings/notifications',       label: 'Notifications',       icon: Settings, parent: { label: 'Settings', path: '/Settings', icon: Settings } },
@@ -328,7 +330,12 @@ export default function Layout({ children }) {
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
+  const [userProfile, setUserProfile] = useState(() => {
+    try {
+      const cached = localStorage.getItem('orben_user_profile');
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  });
   const [isScrolled, setIsScrolled] = useState(false);
 
   // Admin check for sidebar filtering
@@ -379,36 +386,39 @@ export default function Layout({ children }) {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Load user from Supabase auth
+  // Derive profile from a Supabase user object and cache it
+  const deriveProfile = (user) => {
+    if (!user) return;
+    const meta = user.user_metadata || {};
+    const profile = {
+      display_name: meta.display_name || meta.full_name || meta.name || user.email?.split('@')[0],
+      avatar_seed: meta.avatar_seed || 'Felix',
+      avatar_style: meta.avatar_style || 'avataaars',
+      avatar_type: meta.avatar_type || 'dicebear',
+      avatar_url: meta.avatar_url || null,
+    };
+    setUserProfile(profile);
+    try { localStorage.setItem('orben_user_profile', JSON.stringify(profile)); } catch {}
+  };
+
+  // Load user from Supabase auth + derive profile in one pass
   useEffect(() => {
     const loadUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setCurrentUser(session.user);
+        deriveProfile(session.user);
       }
     };
     loadUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUser(session?.user || null);
+      if (session?.user) deriveProfile(session.user);
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // Load profile data from Supabase user metadata
-  useEffect(() => {
-    if (currentUser) {
-      const meta = currentUser.user_metadata || {};
-      setUserProfile({
-        display_name: meta.display_name || meta.full_name || meta.name || currentUser.email?.split('@')[0],
-        avatar_seed: meta.avatar_seed || 'Felix',
-        avatar_style: meta.avatar_style || 'avataaars',
-        avatar_type: meta.avatar_type || 'dicebear',
-        avatar_url: meta.avatar_url || null,
-      });
-    }
-  }, [currentUser]);
 
   // Refresh profile after settings dialog closes
   const handleProfileSettingsClose = async (open) => {
@@ -417,6 +427,7 @@ export default function Layout({ children }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setCurrentUser(user);
+        deriveProfile(user);
       }
     }
   };
@@ -449,6 +460,7 @@ export default function Layout({ children }) {
   }, [theme]);
 
   return (
+    <SelectionBannerProvider>
     <SidebarProvider>
       <BannerNotifications />
       <style>{themeStyles}</style>
@@ -600,24 +612,7 @@ export default function Layout({ children }) {
           </div>
 
           {/* Floating search bar — appears on scroll */}
-          <div
-            className={`fixed top-0 right-0 z-50 hidden md:flex items-center transition-all duration-300 ease-out px-6 py-2.5 bg-background/95 backdrop-blur-md border-b border-border/40 shadow-md ${
-              isScrolled
-                ? "translate-y-0 opacity-100"
-                : "-translate-y-full opacity-0 pointer-events-none"
-            }`}
-            style={{ left: 'var(--sidebar-width, 16rem)' }}
-          >
-            <button
-              onClick={handleProductSearchClick}
-              className="flex-1 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground text-sm border border-border/50 transition-colors"
-              title="Search products (⌘K)"
-            >
-              <Search className="w-4 h-4 flex-shrink-0" />
-              <span className="flex-1 text-left">Search products...</span>
-              <kbd className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground border border-border/50">⌘K</kbd>
-            </button>
-          </div>
+          <FloatingBar isScrolled={isScrolled} onSearchClick={handleProductSearchClick} />
 
           {/* Product Search Dialog */}
           <EnhancedProductSearchDialog
@@ -636,5 +631,60 @@ export default function Layout({ children }) {
         </main>
       </div>
     </SidebarProvider>
+    </SelectionBannerProvider>
+  );
+}
+
+function FloatingBar({ isScrolled, onSearchClick }) {
+  const selectionState = useSelectionBannerState();
+  const hasSelection = selectionState && selectionState.selectedCount > 0;
+
+  return (
+    <div
+      className={`fixed top-0 right-0 z-50 hidden md:flex flex-col transition-all duration-300 ease-out bg-background/95 backdrop-blur-md border-b border-border/40 shadow-md ${
+        isScrolled
+          ? "translate-y-0 opacity-100"
+          : "-translate-y-full opacity-0 pointer-events-none"
+      }`}
+      style={{ left: 'var(--sidebar-width, 16rem)' }}
+    >
+      <div className="flex items-center gap-3 px-6 py-2.5">
+        {/* Search button — shrinks when selection is active */}
+        <button
+          onClick={onSearchClick}
+          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground text-sm border border-border/50 transition-all ${
+            hasSelection ? "w-auto flex-shrink-0" : "flex-1"
+          }`}
+          title="Search products (⌘K)"
+        >
+          <Search className="w-4 h-4 flex-shrink-0" />
+          {!hasSelection && <span className="flex-1 text-left">Search products...</span>}
+          <kbd className="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground border border-border/50">⌘K</kbd>
+        </button>
+
+        {/* Selection info — appears on the same line */}
+        {hasSelection && (
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse flex-shrink-0" />
+              <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 truncate">
+                {selectionState.selectedCount} item{selectionState.selectedCount === 1 ? "" : "s"} selected
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+              {selectionState.children}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={selectionState.onClear}
+                className="text-muted-foreground hover:text-foreground h-8 px-2"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

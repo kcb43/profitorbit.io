@@ -434,6 +434,9 @@
     clearMercariApiRecording() {
       return postAndWait('PO_CLEAR_MERCARI_API_RECORDING', 'PO_CLEAR_MERCARI_API_RECORDING_RESULT', null, 5000);
     },
+    getMercariCapturedOps() {
+      return postAndWait('PO_GET_MERCARI_CAPTURED_OPS', 'PO_GET_MERCARI_CAPTURED_OPS_RESULT', null, 5000);
+    },
 
     // Facebook Recorder controls
     startFacebookApiRecording() {
@@ -476,6 +479,17 @@
     const r = await window.ProfitOrbitExtension.stopMercariApiRecording();
     console.log('🛑 [MERCARI] Recorded API Calls (from page):', r?.records);
     return r;
+  };
+  window.dumpMercariCapturedOps = async () => {
+    const r = await window.ProfitOrbitExtension.getMercariCapturedOps();
+    const ops = r?.ops || {};
+    const entries = Object.entries(ops);
+    console.log(`🎯 [MERCARI] Captured ${entries.length} GraphQL operations:`);
+    entries.forEach(([name, info]) => {
+      console.log(`  ${name}: hash=${info.hash} method=${info.method} captured=${new Date(info.capturedAt).toLocaleString()}`);
+      if (info.sampleVariables) console.log('    variables:', info.sampleVariables);
+    });
+    return ops;
   };
   window.dumpMercariApiRecording = async () => {
     const r = await window.ProfitOrbitExtension.getMercariApiRecording();

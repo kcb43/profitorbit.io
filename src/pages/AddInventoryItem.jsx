@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { SOURCE_GROUPS, ALL_SOURCES, getLogoUrl } from "@/constants/marketplaces";
 import { useCustomSources } from "@/hooks/useCustomSources";
 import { BrandCombobox } from "@/components/BrandCombobox";
+import { CategoryCombobox } from "@/components/CategoryCombobox";
 import { ArrowLeft, Save, Copy as CopyIcon, BarChart, Camera, Scan, ImageIcon, X, Loader2, Sparkles } from "lucide-react";
 import { addDays, format, parseISO } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -1189,19 +1190,10 @@ export default function AddInventoryItem() {
                           </svg>
                           Category
                         </Label>
-                        <Select
-                            onValueChange={handleCategorySelectChange}
-                            value={isOtherCategory ? 'other' : (formData.category ?? '')}
-                        >
-                            <SelectTrigger id="category_select" className="w-full text-foreground bg-background">
-                                <SelectValue placeholder="Select a category">{isOtherCategory && formData.category ? formData.category : (PREDEFINED_CATEGORIES.includes(formData.category) ? formData.category : "Select a category")}</SelectValue>
-                            </SelectTrigger>
-                            <SelectContent className="bg-popover text-popover-foreground">
-                                {PREDEFINED_CATEGORIES.map(cat => (
-                                    <SelectItem key={cat} value={cat} className="text-foreground">{cat}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <CategoryCombobox
+                          value={formData.category || ''}
+                          onChange={(cat) => handleCategorySelectChange(cat)}
+                        />
                     </div>
 
                     {/* Brand Field */}

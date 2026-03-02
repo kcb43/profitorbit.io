@@ -77,16 +77,16 @@ export default function InventoryLayoutV1({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-foreground">Inventory</h1>
         <div className="flex items-center gap-2">
+          <Link to={createPageUrl("Sales") + "?import=open"}>
+            <Button size="sm" variant="outline" className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950">
+              <Download className="w-4 h-4" />
+              Import
+            </Button>
+          </Link>
           <Link to={createPageUrl("AddInventoryItem")} state={returnStateForInventory}>
             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
               <Plus className="w-4 h-4" />
               Add Item
-            </Button>
-          </Link>
-          <Link to={createPageUrl("Import")} state={returnStateForInventory}>
-            <Button size="sm" variant="outline" className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950">
-              <Download className="w-4 h-4" />
-              Import
             </Button>
           </Link>
           <DropdownMenu>
@@ -183,16 +183,6 @@ export default function InventoryLayoutV1({
 
         {/* Marketplace chips */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Select value={platformFilter} onValueChange={setPlatformFilter}>
-            <SelectTrigger className="h-8 w-[110px] bg-background border-border/50 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Items</SelectItem>
-              <SelectItem value="listed">Listed</SelectItem>
-              <SelectItem value="unlisted">Not Listed</SelectItem>
-            </SelectContent>
-          </Select>
           {CROSSLIST_MARKETPLACES.map((m) => {
             const active = activeMkts.includes(m.id);
             return (
@@ -211,7 +201,7 @@ export default function InventoryLayoutV1({
               </button>
             );
           })}
-          {(platformFilter !== "all" || activeMkts.length > 0) && (
+          {activeMkts.length > 0 && (
             <button className="text-xs text-muted-foreground hover:text-foreground underline" onClick={() => { setPlatformFilter("all"); setActiveMkts([]); }}>
               Clear
             </button>
